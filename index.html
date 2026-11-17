@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador de campos vectoriales y Maxwell</title>
+
+<script src="vendor/math.js"></script>
+<script src="vendor/plotly.min.js"></script>
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['\\(', '\\)']], displayMath: [['\\[', '\\]']] },
+    svg: { fontCache: 'global' }, options: { enableMenu: false }
+  };
+</script>
+<script src="vendor/mathjax/tex-svg.js"></script>
+
+<style>
+  :root {
+    --azul: #003366; --amarillo: #ffcc00; --acento: #00b3a4;
+    --naranja: #e8630a; --rojo: #d62728; --verde: #1b6b3a;
+    --fondo: #f4f6f9; --tarjeta: #ffffff; --texto: #1f2937;
+    --suave: #6b7280; --borde: #d9dee7; --error: #c0392b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", Roboto, Arial, sans-serif; background: var(--fondo); color: var(--texto); line-height: 1.55; }
+  header.barra { background: linear-gradient(135deg, var(--azul) 0%, #0a5588 100%);
+    color: #fff; padding: 1.2rem 1.5rem 1rem; border-bottom: 5px solid var(--amarillo); }
+  header.barra h1 { font-size: 1.35rem; font-weight: 600; }
+  header.barra p { font-size: .86rem; opacity: .9; margin-top: .2rem; }
+  main { max-width: 1120px; margin: 0 auto; padding: 1.2rem 1rem 3rem; }
+
+  .aviso { background: #fff8e1; border-left: 4px solid var(--amarillo);
+    padding: .8rem 1rem; border-radius: 4px; margin-bottom: 1.1rem; font-size: .9rem; }
+  .modulo { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 8px;
+    margin-bottom: 1.2rem; overflow: hidden; }
+  .modulo > h2 { background: var(--azul); color: #fff; font-size: 1rem; font-weight: 600;
+    padding: .7rem 1rem; display: flex; align-items: center; gap: .6rem; }
+  .modulo > h2 .num { background: var(--amarillo); color: var(--azul); width: 1.7rem; height: 1.7rem;
+    border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: .85rem; flex: none; }
+  .modulo > h2 small { margin-left: auto; font-weight: 400; opacity: .85; font-size: .78rem; }
+  .cuerpo { padding: 1rem; }
+  .intro { font-size: .9rem; color: var(--suave); margin-bottom: .9rem; }
+
+  .rejilla { display: grid; gap: .8rem; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+  label { display: block; font-size: .83rem; font-weight: 600; margin-bottom: .25rem; }
+  label .pista { font-weight: 400; color: var(--suave); }
+  input[type=text], select { width: 100%; padding: .5rem .6rem; border: 1px solid var(--borde);
+    border-radius: 5px; font-size: .92rem; font-family: "Consolas", "Courier New", monospace;
+    background: #fff; color: var(--texto); }
+  select { font-family: inherit; }
+  input[type=text]:focus, select:focus { outline: 2px solid var(--acento); outline-offset: -1px; }
+
+  button { background: var(--azul); color: #fff; border: 0; border-radius: 5px;
+    padding: .55rem 1.1rem; font-size: .9rem; font-weight: 600; cursor: pointer; margin-top: .9rem; }
+  button:hover { background: #0a5588; }
+  button.sec { background: #fff; color: var(--azul); border: 1px solid var(--azul); }
+  button.sec:hover { background: #eef3f8; }
+
+  .msg { margin-top: .9rem; padding: .7rem .9rem; border-radius: 5px; font-size: .89rem; display: none; }
+  .msg.ok { display: block; background: #e8f6ee; border-left: 4px solid var(--verde); }
+  .msg.mal { display: block; background: #fdeceb; border-left: 4px solid var(--error); }
+  .msg.info { display: block; background: #eaf3fb; border-left: 4px solid var(--azul); }
+  .msg ul { margin: .4rem 0 0 1.1rem; } .msg li { margin: .18rem 0; }
+
+  .panel { margin-top: 1rem; display: none; } .panel.visible { display: block; }
+  .grafico { width: 100%; height: 440px; border: 1px solid var(--borde); border-radius: 6px; background: #fff; }
+  .dos { display: grid; gap: .8rem; grid-template-columns: 1fr 1fr; }
+  @media (max-width: 820px) { .dos { grid-template-columns: 1fr; } }
+
+  .ficha { border: 1px solid var(--borde); border-radius: 6px; padding: .8rem; background: #fbfcfe; }
+  .ficha h3 { font-size: .85rem; color: var(--azul); margin-bottom: .45rem;
+    text-transform: uppercase; letter-spacing: .03em; }
+  .ficha .dato { font-size: .9rem; margin: .32rem 0; }
+  .ficha .dato b { color: var(--azul); }
+
+  details.ayuda { margin-top: 1rem; border: 1px dashed var(--borde); border-radius: 6px; background: #fbfcfe; }
+  details.ayuda summary { cursor: pointer; padding: .6rem .9rem; font-size: .87rem; font-weight: 600; color: var(--azul); }
+  details.ayuda .adentro { padding: 0 .9rem .9rem; font-size: .88rem; }
+  details.ayuda table, table.ref { width: 100%; border-collapse: collapse; margin-top: .5rem; font-size: .85rem; }
+  details.ayuda th, details.ayuda td, table.ref th, table.ref td { border: 1px solid var(--borde); padding: .35rem .5rem; text-align: left; }
+  details.ayuda th, table.ref th { background: #eef3f8; color: var(--azul); }
+  code { background: #eef1f6; padding: .1rem .3rem; border-radius: 3px; font-size: .88em; }
+
+  .barraherr { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.1rem; }
+  .barraherr button { margin-top: 0; }
+  .estado { font-size: .8rem; color: var(--suave); margin-left: auto; }
+  footer { text-align: center; font-size: .78rem; color: var(--suave); padding: 1.5rem 1rem 0; }
+  .sub { font-size: .82rem; color: var(--suave); margin: .6rem 0 .2rem; }
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <h1>Simulador de campos vectoriales y Maxwell</h1>
+  <p>Fase 4 · Cálculo Multivariado (203057) · Universidad Nacional Abierta y a Distancia</p>
+</header>
+
+<main>
+
+<div class="aviso">
+  Este simulador <b>no resuelve la fase por usted</b>. Representa el campo, calcula la divergencia y
+  el rotacional —que es lo que el Apéndice 5 le pide en la actividad 2—, le muestra el campo sobre
+  su curva o superficie, y <b>comprueba</b> el valor de la integral que usted resolvió a mano y el
+  integrando del teorema que usted planteó. La integral de la actividad 3 y la igualdad de la
+  actividad 4 las escribe usted.
+</div>
+
+<div class="barraherr">
+  <button class="sec" id="bGuardar">Guardar avance</button>
+  <button class="sec" id="bCodigo">Código de traslado</button>
+  <button class="sec" id="bCargar">Cargar desde código</button>
+  <button class="sec" id="bLimpiar">Borrar todo</button>
+  <span class="estado" id="estado"></span>
+</div>
+
+<!-- ─────────── MÓDULO 1 ─────────── -->
+<section class="modulo" id="mod1">
+  <h2><span class="num">1</span> Campo vectorial y visualización <small>Actividad 1 · ítems I y II</small></h2>
+  <div class="cuerpo">
+    <p class="intro">
+      Escriba las tres componentes del campo de su problema. El simulador lo representa en el
+      espacio para que usted describa su comportamiento y anticipe, antes de calcular, si espera
+      divergencia o rotacional no nulos.
+    </p>
+
+    <div class="rejilla">
+      <div><label for="P">P(x, y, z)</label><input type="text" id="P" placeholder="-2*y"></div>
+      <div><label for="Q">Q(x, y, z)</label><input type="text" id="Q" placeholder="2*x"></div>
+      <div><label for="R">R(x, y, z)</label><input type="text" id="R" placeholder="z"></div>
+    </div>
+    <div class="rejilla" style="margin-top:.7rem">
+      <div><label for="vmin">Ventana · mínimo</label><input type="text" id="vmin" placeholder="-3"></div>
+      <div><label for="vmax">Ventana · máximo</label><input type="text" id="vmax" placeholder="3"></div>
+      <div><label for="dens">Densidad visual</label>
+        <select id="dens"><option value="5">Baja</option><option value="7" selected>Media</option><option value="9">Alta</option></select>
+      </div>
+      <div><label for="escala">Escala de los vectores</label>
+        <select id="escala"><option value="prop" selected>Magnitud proporcional</option><option value="norm">Dirección normalizada</option></select>
+      </div>
+    </div>
+
+    <button id="b1">Representar el campo</button>
+    <div class="msg" id="m1"></div>
+
+    <div class="panel" id="p1">
+      <div class="dos">
+        <div class="grafico" id="g1"></div>
+        <div class="ficha" id="f1"></div>
+      </div>
+    </div>
+
+    <details class="ayuda">
+      <summary>¿No sabe qué escribir? Vea un ejemplo resuelto</summary>
+      <div class="adentro">
+        <p>Problema de práctica, que <b>no es ninguno de los cinco del Apéndice 5</b>:
+          \(\mathbf{F}(x,y,z)=(-y,\;x,\;2z)\) sobre la circunferencia \(x^{2}+y^{2}=1\) en \(z=0\).</p>
+        <table>
+          <tr><th>Casilla</th><th>Qué se escribe</th></tr>
+          <tr><td>P(x, y, z)</td><td><code>-y</code></td></tr>
+          <tr><td>Q(x, y, z)</td><td><code>x</code></td></tr>
+          <tr><td>R(x, y, z)</td><td><code>2*z</code></td></tr>
+          <tr><td>Ventana</td><td>de <code>-2</code> a <code>2</code></td></tr>
+        </table>
+        <p style="margin-top:.6rem"><b>Cómo se escriben las expresiones:</b> el producto siempre con
+          <code>*</code> (<code>2*x</code>, nunca <code>2x</code>), la potencia con <code>^</code>,
+          la raíz con <code>sqrt(...)</code> y \(\pi\) como <code>pi</code>. Una componente nula se
+          escribe <code>0</code>.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ─────────── MÓDULO 2 ─────────── -->
+<section class="modulo" id="mod2">
+  <h2><span class="num">2</span> Divergencia y rotacional <small>Actividad 2 · ítems I, II y III</small></h2>
+  <div class="cuerpo">
+    <p class="intro">
+      El Apéndice 5 pide que el simulador determine la divergencia y el rotacional, así que aquí sí
+      los muestra. Si ya los calculó a mano, escríbalos primero y los contrasto antes de revelarlos.
+    </p>
+
+    <p class="sub">Opcional — lo que usted obtuvo a mano</p>
+    <div class="rejilla">
+      <div><label for="mDiv">∇ · F</label><input type="text" id="mDiv" placeholder="1"></div>
+      <div><label for="mRx">(∇ × F)<sub>x</sub></label><input type="text" id="mRx" placeholder="0"></div>
+      <div><label for="mRy">(∇ × F)<sub>y</sub></label><input type="text" id="mRy" placeholder="0"></div>
+      <div><label for="mRz">(∇ × F)<sub>z</sub></label><input type="text" id="mRz" placeholder="4"></div>
+    </div>
+
+    <button id="b2a" class="sec">Contrastar lo que calculé</button>
+    <button id="b2">Calcular con el simulador</button>
+    <div class="msg" id="m2"></div>
+
+    <div class="panel" id="p2"><div class="ficha" id="f2"></div></div>
+  </div>
+</section>
+
+<!-- ─────────── MÓDULO 3 ─────────── -->
+<section class="modulo" id="mod3">
+  <h2><span class="num">3</span> Campo sobre la curva o la superficie <small>Actividad 3 · ítems II y IV</small></h2>
+  <div class="cuerpo">
+    <p class="intro">
+      Describa la curva o la superficie que la Tabla 5 del Apéndice 5 asigna a su letra. El simulador
+      le muestra el comportamiento del campo sobre ella y, cuando usted haya resuelto la integral a
+      mano, comprueba su resultado <b>sin mostrarle el valor correcto</b>.
+    </p>
+
+    <div class="rejilla">
+      <div><label for="objeto">Qué le asignaron</label>
+        <select id="objeto">
+          <option value="curva">Una curva cerrada — circulación</option>
+          <option value="superficie">Una superficie cerrada — flujo</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="camposObjeto" style="margin-top:.8rem"></div>
+
+    <button id="b3">Mostrar el campo sobre el objeto</button>
+    <div class="msg" id="m3"></div>
+
+    <div class="panel" id="p3">
+      <div class="dos">
+        <div class="grafico" id="g3"></div>
+        <div class="ficha" id="f3"></div>
+      </div>
+
+      <div class="rejilla" style="margin-top:.9rem">
+        <div><label for="vRes">Resultado que obtuve a mano <span class="pista">— ítem IV</span></label>
+          <input type="text" id="vRes" placeholder="113.10"></div>
+      </div>
+      <button id="b3b">Comprobar mi resultado</button>
+      <div class="msg" id="m3b"></div>
+    </div>
+
+    <details class="ayuda">
+      <summary>¿Cómo se describe la curva o la superficie?</summary>
+      <div class="adentro">
+        <p><b>Curva cerrada.</b> Escriba la parametrización, que es justamente lo que pide el ítem I.
+          Para \(x^{2}+y^{2}=1\) en \(z=0\), recorrida en sentido antihorario:</p>
+        <table>
+          <tr><th>Casilla</th><th>Qué se escribe</th></tr>
+          <tr><td>x(t)</td><td><code>cos(t)</code></td></tr>
+          <tr><td>y(t)</td><td><code>sin(t)</code></td></tr>
+          <tr><td>z(t)</td><td><code>0</code></td></tr>
+          <tr><td>t desde / hasta</td><td><code>0</code> / <code>2*pi</code></td></tr>
+        </table>
+        <p style="margin-top:.6rem"><b>Superficie cerrada.</b> Escriba las desigualdades del sólido
+          que la superficie encierra, separadas por coma, y el simulador toma su frontera con la
+          normal hacia afuera. Una esfera de radio 2: <code>x^2+y^2+z^2 &lt;= 4</code>. Un cubo:
+          <code>0&lt;=x, x&lt;=2, 0&lt;=y, y&lt;=2, 0&lt;=z, z&lt;=2</code>.</p>
+        <p style="margin-top:.6rem">En el ejemplo de práctica, la circulación de
+          \(\mathbf{F}=(-y,x,2z)\) sobre \(x^{2}+y^{2}=1\) en \(z=0\) vale \(2\pi\approx 6{,}283\).</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<!-- ─────────── MÓDULO 4 ─────────── -->
+<section class="modulo" id="mod4">
+  <h2><span class="num">4</span> Integrando del teorema <small>Actividad 4 · ítem II</small></h2>
+  <div class="cuerpo">
+    <p class="intro">
+      Elija el teorema y escriba el integrando que puso al lado derecho de la igualdad. El simulador
+      comprueba que coincida con la divergencia o con el rotacional del módulo 2. <b>No resuelve la
+      integral:</b> la igualdad se plantea, no se resuelve.
+    </p>
+
+    <div class="rejilla">
+      <div><label for="teorema">Teorema elegido</label>
+        <select id="teorema">
+          <option value="">Elija…</option>
+          <option value="divergencia">Teorema de la divergencia</option>
+          <option value="stokes">Teorema de Stokes</option>
+          <option value="green">Teorema de Green</option>
+        </select>
+      </div>
+      <div><label for="integrando">Integrando del lado derecho</label>
+        <input type="text" id="integrando" placeholder="4"></div>
+    </div>
+
+    <button id="b4">Comprobar el integrando</button>
+    <div class="msg" id="m4"></div>
+
+    <div class="panel" id="p4"><div class="ficha" id="f4"></div></div>
+
+    <details class="ayuda">
+      <summary>¿Qué integrando corresponde a cada teorema?</summary>
+      <div class="adentro">
+        <table class="ref">
+          <tr><th>Teorema</th><th>Lado izquierdo</th><th>Integrando del lado derecho</th></tr>
+          <tr><td>Divergencia</td><td>flujo por una superficie cerrada</td><td>\(\nabla\cdot\mathbf{F}\)</td></tr>
+          <tr><td>Stokes</td><td>circulación por una curva cerrada</td><td>\((\nabla\times\mathbf{F})\cdot \mathbf{n}\)</td></tr>
+          <tr><td>Green</td><td>circulación por una curva cerrada del plano</td><td>\(\partial Q/\partial x-\partial P/\partial y\)</td></tr>
+        </table>
+        <p style="margin-top:.6rem">Para Stokes y Green, cuando la curva está en el plano \(z=0\) y
+          se recorre en sentido antihorario, la normal es \(\mathbf{k}\) y el integrando se reduce a
+          la <b>tercera componente</b> del rotacional. En el ejemplo de práctica, con
+          \(\mathbf{F}=(-y,x,2z)\), ese integrando es <code>2</code>.</p>
+      </div>
+    </details>
+  </div>
+</section>
+
+<footer>
+  Universidad Nacional Abierta y a Distancia · Escuela de Ciencias Básicas, Tecnología e Ingeniería<br>
+  Cálculo Multivariado (203057) — Fase 4
+</footer>
+</main>
+
+<script>
+'use strict';
+
+const T = {
+  P: null, Q: null, R: null, Ps: '', Qs: '', Rs: '',
+  vmin: -3, vmax: 3, listo1: false,
+  objeto: 'curva', valor: null, listo3: false
+};
+
+function el(id) { return document.getElementById(id); }
+function aviso(id, clase, html) { const n = el(id); n.className = 'msg ' + clase; n.innerHTML = html; }
+function limpiarAviso(id) { el(id).className = 'msg'; el(id).innerHTML = ''; }
+function tipografiar() { if (window.MathJax && MathJax.typesetPromise) MathJax.typesetPromise().catch(() => {}); }
+
+function compilar(expr, nombre) {
+  if (expr === null || expr === undefined || !String(expr).trim()) throw new Error('Falta ' + nombre + '.');
+  try { return math.compile(String(expr)); }
+  catch (e) { throw new Error('No pude leer ' + nombre + ': ' + e.message); }
+}
+function ev(c, sc) {
+  let v; try { v = c.evaluate(sc); } catch (e) { return NaN; }
+  if (typeof v === 'boolean') return v;
+  return (typeof v === 'number' && isFinite(v)) ? v : NaN;
+}
+function numero(txt, nombre) {
+  if (!String(txt || '').trim()) throw new Error('Falta ' + nombre + '.');
+  const v = ev(compilar(txt, nombre), {});
+  if (typeof v !== 'number' || !isFinite(v)) throw new Error(nombre + ' no es un número válido.');
+  return v;
+}
+function decimales(txt) {
+  const t = String(txt).trim().replace(',', '.');
+  if (!/^-?\d+(\.\d+)?$/.test(t)) return null;
+  const p = t.split('.');
+  return p.length === 2 ? p[1].length : 0;
+}
+function coincide(txt, correcto) {
+  let a; try { a = numero(txt, 'el valor'); } catch (e) { return false; }
+  const d = decimales(txt), dif = Math.abs(a - correcto);
+  const piso = Math.max(0.006, Math.abs(correcto) * 0.01);
+  if (d === null) return dif <= Math.max(1e-6, Math.abs(correcto) * 1e-6);
+  return dif <= 0.5 * Math.pow(10, -d) && dif <= piso;
+}
+function fmt(v) {
+  if (!isFinite(v)) return '—';
+  if (Math.abs(v) < 1e-10) return '0';
+  if (Math.abs(v) >= 1e5) return v.toExponential(4);
+  return (Math.round(v * 1e6) / 1e6).toString();
+}
+function aTex(s) {
+  return String(s).replace(/\*/g, ' \\cdot ').replace(/<=/g, ' \\le ').replace(/>=/g, ' \\ge ')
+    .replace(/\^(\w+)/g, '^{$1}').replace(/\bpi\b/g, '\\pi').replace(/ \\cdot \\pi/g, '\\pi')
+    .replace(/\b(cos|sin|tan|exp|ln|log|sinh|cosh|tanh)\b/g, '\\$1')
+    .replace(/sqrt\(/g, '\\sqrt{(');
+}
+
+/* ───── campo, divergencia y rotacional por diferencias centradas ───── */
+function campo(p) {
+  const sc = { x: p[0], y: p[1], z: p[2] };
+  return [ev(T.P, sc), ev(T.Q, sc), ev(T.R, sc)];
+}
+function dParcial(comp, p, k) {
+  const h = 1e-4 * Math.max(1, Math.abs(p[k]));
+  const a = p.slice(), b = p.slice();
+  a[k] += h; b[k] -= h;
+  return (campo(a)[comp] - campo(b)[comp]) / (2 * h);
+}
+function divergencia(p) { return dParcial(0, p, 0) + dParcial(1, p, 1) + dParcial(2, p, 2); }
+function rotacional(p) {
+  return [dParcial(2, p, 1) - dParcial(1, p, 2),
+          dParcial(0, p, 2) - dParcial(2, p, 0),
+          dParcial(1, p, 0) - dParcial(0, p, 1)];
+}
+
+/* puntos de prueba dentro de la ventana, evitando el origen exacto */
+function puntosPrueba(n) {
+  const a = T.vmin, b = T.vmax, out = [];
+  for (let i = 0; i < n; i++) {
+    const p = [a + Math.random() * (b - a), a + Math.random() * (b - a), a + Math.random() * (b - a)];
+    if (p.every(c => Math.abs(c) > 1e-3)) out.push(p);
+  }
+  return out;
+}
+
+/* compara una expresión del estudiante con una función verdadera, por muestreo */
+function comparaExpresion(txt, verdadera, nombre) {
+  const c = compilar(txt, nombre);
+  const pts = puntosPrueba(60);
+  let validos = 0, peor = 0;
+  for (const p of pts) {
+    const a = ev(c, { x: p[0], y: p[1], z: p[2] });
+    const b = verdadera(p);
+    if (typeof a !== 'number' || !isFinite(a) || !isFinite(b)) continue;
+    validos++;
+    const d = Math.abs(a - b) / Math.max(1, Math.abs(b));
+    if (d > peor) peor = d;
+  }
+  if (validos < 15) throw new Error('No pude evaluar ' + nombre + ' en suficientes puntos.');
+  return peor < 2e-3;
+}
+
+/* ───── MÓDULO 1 ───── */
+function representar() {
+  limpiarAviso('m1'); el('p1').classList.remove('visible'); T.listo1 = false;
+  try {
+    T.Ps = el('P').value.trim(); T.Qs = el('Q').value.trim(); T.Rs = el('R').value.trim();
+    T.P = compilar(T.Ps, 'la componente P');
+    T.Q = compilar(T.Qs, 'la componente Q');
+    T.R = compilar(T.Rs, 'la componente R');
+    const prueba = { x: .37, y: .53, z: .71 };
+    [['P', T.P], ['Q', T.Q], ['R', T.R]].forEach(([n, c]) => {
+      if (typeof ev(c, prueba) !== 'number')
+        throw new Error('La componente ' + n + ' no devuelve un número. Use x, y, z, y el producto con *.');
+    });
+    T.vmin = numero(el('vmin').value, 'el mínimo de la ventana');
+    T.vmax = numero(el('vmax').value, 'el máximo de la ventana');
+    if (T.vmax <= T.vmin) throw new Error('El máximo de la ventana debe ser mayor que el mínimo.');
+
+    dibujarCampo();
+    el('f1').innerHTML = fichaCampo();
+    el('p1').classList.add('visible');
+    T.listo1 = true;
+    aviso('m1', 'ok', 'Campo representado. Describa su comportamiento en el ítem III y anticipe, ' +
+      '<b>antes de calcular</b>, si espera divergencia o rotacional no nulos.');
+    tipografiar(); guardar(true);
+  } catch (e) { aviso('m1', 'mal', e.message); }
+}
+
+function dibujarCampo() {
+  const n = parseInt(el('dens').value, 10);
+  const norm = el('escala').value === 'norm';
+  const X = [], Y = [], Z = [], U = [], V = [], W = [];
+  const a = T.vmin, b = T.vmax;
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) for (let k = 0; k < n; k++) {
+    const p = [a + (b - a) * i / (n - 1), a + (b - a) * j / (n - 1), a + (b - a) * k / (n - 1)];
+    const f = campo(p);
+    if (f.some(c => !isFinite(c))) continue;
+    let [u, v, w] = f;
+    if (norm) { const m = Math.hypot(u, v, w) || 1; u /= m; v /= m; w /= m; }
+    X.push(p[0]); Y.push(p[1]); Z.push(p[2]); U.push(u); V.push(v); W.push(w);
+  }
+  Plotly.newPlot('g1', [{
+    type: 'cone', x: X, y: Y, z: Z, u: U, v: V, w: W,
+    colorscale: [[0, '#003366'], [0.5, '#00b3a4'], [1, '#ffcc00']],
+    sizemode: 'scaled', sizeref: 0.5, showscale: true,
+    colorbar: { title: { text: '|F|', side: 'right' }, thickness: 12 }
+  }], {
+    margin: { l: 0, r: 0, t: 36, b: 0 }, paper_bgcolor: '#fff',
+    font: { family: 'Segoe UI, Arial', size: 11 },
+    title: { text: 'Campo vectorial en el espacio', font: { size: 13, color: '#003366' } },
+    scene: { xaxis: { title: 'x' }, yaxis: { title: 'y' }, zaxis: { title: 'z' }, aspectmode: 'cube' }
+  }, { displayModeBar: false, responsive: true });
+}
+
+function fichaCampo() {
+  const pts = puntosPrueba(400);
+  let dNulo = 0, rNulo = 0, dPos = 0, dNeg = 0;
+  for (const p of pts) {
+    const d = divergencia(p), r = rotacional(p);
+    if (Math.abs(d) < 1e-6) dNulo++; else if (d > 0) dPos++; else dNeg++;
+    if (Math.hypot(r[0], r[1], r[2]) < 1e-6) rNulo++;
+  }
+  const m = pts.length || 1;
+  let h = '<h3>Campo ingresado</h3>';
+  h += '<div class="dato">\\[\\mathbf{F}(x,y,z)=\\big(' +
+       aTex(T.Ps) + ',\\; ' + aTex(T.Qs) + ',\\; ' + aTex(T.Rs) + '\\big)\\]</div>';
+  h += '<div class="dato"><b>Componentes:</b> \\(P=' + aTex(T.Ps) + '\\), \\(Q=' + aTex(T.Qs) +
+       '\\), \\(R=' + aTex(T.Rs) + '\\)</div>';
+  h += '<h3 style="margin-top:.8rem">Lectura visual</h3>';
+  h += '<div class="dato">' + (dNulo / m > 0.98
+      ? 'Las flechas no muestran acumulación ni vaciado: lo que entra en cada región parece salir de ella.'
+      : (dPos / m > 0.8 ? 'Las flechas tienden a separarse: el campo parece expandirse.'
+        : (dNeg / m > 0.8 ? 'Las flechas tienden a juntarse: el campo parece comprimirse.'
+          : 'El comportamiento cambia según la zona del espacio.'))) + '</div>';
+  h += '<div class="dato">' + (rNulo / m > 0.98
+      ? 'No se observa tendencia al giro alrededor de ningún eje.'
+      : 'Se observa tendencia al giro: las flechas rotan alrededor de un eje.') + '</div>';
+  h += '<div class="dato" style="color:var(--suave);font-size:.84rem;margin-top:.6rem">' +
+       'Esto es una lectura del dibujo, para que usted escriba su anticipación del ítem III. ' +
+       'Los valores exactos los calcula el módulo 2.</div>';
+  return h;
+}
+
+/* ───── MÓDULO 2 ───── */
+function contrastarOperadores() {
+  limpiarAviso('m2');
+  if (!T.listo1) { aviso('m2', 'mal', 'Represente primero el campo en el módulo 1.'); return; }
+  const campos = [
+    ['mDiv', 'la divergencia', (p) => divergencia(p)],
+    ['mRx', 'la componente x del rotacional', (p) => rotacional(p)[0]],
+    ['mRy', 'la componente y del rotacional', (p) => rotacional(p)[1]],
+    ['mRz', 'la componente z del rotacional', (p) => rotacional(p)[2]]
+  ];
+  const bien = [], mal = [];
+  let escritos = 0;
+  for (const [id, nombre, verdadera] of campos) {
+    const t = el(id).value.trim();
+    if (!t) continue;
+    escritos++;
+    try { (comparaExpresion(t, verdadera, nombre) ? bien : mal).push(nombre); }
+    catch (e) { mal.push(nombre + ' (' + e.message + ')'); }
+  }
+  if (!escritos) { aviso('m2', 'info', 'Escriba al menos uno de los cuatro campos para contrastarlo.'); return; }
+  let h = '';
+  if (bien.length) h += '<b>Coincide:</b> ' + bien.join(', ') + '.';
+  if (mal.length) {
+    h += (h ? '<br>' : '') + '<b>No coincide:</b> ' + mal.join(', ') + '.';
+    h += '<ul><li>Revise el orden de las derivadas en el rotacional: ' +
+         '\\((\\partial_y R-\\partial_z Q,\\; \\partial_z P-\\partial_x R,\\; \\partial_x Q-\\partial_y P)\\).</li>' +
+         '<li>Recuerde que la divergencia suma \\(\\partial_x P+\\partial_y Q+\\partial_z R\\).</li></ul>';
+  }
+  h += '<br><span style="color:var(--suave);font-size:.85rem">Todavía no le muestro los valores. ' +
+       'Cuando quiera verlos, pulse «Calcular con el simulador».</span>';
+  aviso('m2', mal.length ? 'mal' : 'ok', h);
+  tipografiar(); guardar(true);
+}
+
+function calcularOperadores() {
+  limpiarAviso('m2'); el('p2').classList.remove('visible');
+  if (!T.listo1) { aviso('m2', 'mal', 'Represente primero el campo en el módulo 1.'); return; }
+
+  const pts = puntosPrueba(300);
+  const divs = pts.map(divergencia);
+  const rots = pts.map(rotacional);
+  const constante = (vs) => {
+    const a = Math.min.apply(null, vs), b = Math.max.apply(null, vs);
+    return (b - a) < 1e-5 ? (Math.round(((a + b) / 2) * 1e6) / 1e6) : null;
+  };
+  const dC = constante(divs);
+  const rC = [constante(rots.map(r => r[0])), constante(rots.map(r => r[1])), constante(rots.map(r => r[2]))];
+
+  const muestra = [[1, 1, 1], [2, -1, 0.5], [-1, 2, -1], [0.5, 0.5, 2]];
+  let h = '<h3>Divergencia</h3>';
+  h += '<div class="dato">' + (dC !== null
+      ? '\\(\\nabla\\cdot\\mathbf{F} = ' + dC + '\\) en todo el espacio.'
+      : '\\(\\nabla\\cdot\\mathbf{F}\\) depende del punto. Valores en puntos de referencia:') + '</div>';
+  if (dC === null) {
+    h += '<table class="ref"><tr><th>(x, y, z)</th><th>∇ · F</th></tr>';
+    muestra.forEach(p => { h += '<tr><td>(' + p.join(', ') + ')</td><td>' + fmt(divergencia(p)) + '</td></tr>'; });
+    h += '</table>';
+  }
+  h += '<div class="dato">' + (dC !== null && Math.abs(dC) < 1e-9
+      ? 'La divergencia es idénticamente cero: el campo es <b>solenoidal</b>. No hay fuentes ni sumideros.'
+      : 'Una divergencia distinta de cero indica presencia de fuentes (positiva) o sumideros (negativa).') + '</div>';
+
+  h += '<h3 style="margin-top:.9rem">Rotacional</h3>';
+  const todoCero = rC.every(v => v !== null && Math.abs(v) < 1e-9);
+  if (rC.every(v => v !== null)) {
+    h += '<div class="dato">\\(\\nabla\\times\\mathbf{F} = (' + rC[0] + ',\\; ' + rC[1] + ',\\; ' + rC[2] +
+         ')\\) en todo el espacio.</div>';
+  } else {
+    h += '<div class="dato">\\(\\nabla\\times\\mathbf{F}\\) depende del punto. Valores de referencia:</div>';
+    h += '<table class="ref"><tr><th>(x, y, z)</th><th>∇ × F</th></tr>';
+    muestra.forEach(p => { const r = rotacional(p);
+      h += '<tr><td>(' + p.join(', ') + ')</td><td>(' + r.map(fmt).join(', ') + ')</td></tr>'; });
+    h += '</table>';
+  }
+  h += '<div class="dato">' + (todoCero
+      ? 'El rotacional es idénticamente cero: el campo es <b>irrotacional</b>, sin tendencia al giro.'
+      : 'Un rotacional distinto de cero indica circulación local alrededor del eje que señala.') + '</div>';
+
+  h += '<div class="dato" style="color:var(--suave);font-size:.84rem;margin-top:.7rem">' +
+       'La interpretación física y la relación con la ecuación de Maxwell pertinente son suyas: ' +
+       'eso es el ítem III de la actividad 2 y el ítem III de la actividad 4.</div>';
+
+  el('f2').innerHTML = h;
+  el('p2').classList.add('visible');
+  aviso('m2', 'ok', 'Calculado. Contraste estos resultados con la anticipación que escribió en la actividad 1.');
+  tipografiar(); guardar(true);
+}
+
+/* ───── MÓDULO 3 ───── */
+function camposObjeto() {
+  T.objeto = el('objeto').value;
+  const c = el('camposObjeto');
+  if (T.objeto === 'curva') {
+    c.innerHTML =
+      '<div class="rejilla">' +
+      '<div><label for="cx">x(t)</label><input type="text" id="cx" placeholder="cos(t)"></div>' +
+      '<div><label for="cy">y(t)</label><input type="text" id="cy" placeholder="sin(t)"></div>' +
+      '<div><label for="cz">z(t)</label><input type="text" id="cz" placeholder="0"></div>' +
+      '<div><label for="ta">t desde</label><input type="text" id="ta" placeholder="0"></div>' +
+      '<div><label for="tb">t hasta</label><input type="text" id="tb" placeholder="2*pi"></div>' +
+      '</div>';
+  } else {
+    c.innerHTML =
+      '<div class="rejilla"><div style="grid-column:1/-1">' +
+      '<label for="solido">Sólido que encierra la superficie ' +
+      '<span class="pista">— desigualdades separadas por coma; la normal se toma hacia afuera</span></label>' +
+      '<input type="text" id="solido" placeholder="x^2 + y^2 + z^2 &lt;= 4"></div></div>';
+  }
+}
+
+function leerSolido(txt) {
+  const partes = String(txt).split(',').map(s => s.trim()).filter(s => s.length);
+  if (!partes.length) throw new Error('Escriba al menos una desigualdad para el sólido.');
+  return partes.map(p => {
+    if (!/[<>]=?/.test(p))
+      throw new Error('«' + p + '» no es una desigualdad. Use <= o >=, por ejemplo x^2+y^2+z^2 <= 4.');
+    const c = compilar(p, 'el sólido');
+    if (typeof ev(c, { x: .1, y: .1, z: .1 }) !== 'boolean')
+      throw new Error('«' + p + '» no se evalúa como una desigualdad.');
+    return { txt: p, c: c };
+  });
+}
+function enSolido(reg, p) {
+  const sc = { x: p[0], y: p[1], z: p[2] };
+  for (const d of reg) if (ev(d.c, sc) !== true) return false;
+  return true;
+}
+function cajaSolido(reg) {
+  let L = 1, mejor = null;
+  for (let it = 0; it < 9; it++) {
+    const lim = [[Infinity, -Infinity], [Infinity, -Infinity], [Infinity, -Infinity]];
+    let hay = 0, m = 28;
+    for (let i = 0; i < m; i++) for (let j = 0; j < m; j++) for (let k = 0; k < m; k++) {
+      const p = [-L + 2 * L * i / (m - 1), -L + 2 * L * j / (m - 1), -L + 2 * L * k / (m - 1)];
+      if (enSolido(reg, p)) {
+        hay++;
+        for (let q = 0; q < 3; q++) {
+          if (p[q] < lim[q][0]) lim[q][0] = p[q];
+          if (p[q] > lim[q][1]) lim[q][1] = p[q];
+        }
+      }
+    }
+    if (hay > 0) { mejor = lim; if (!lim.some(a => a[0] <= -L * .999 || a[1] >= L * .999)) break; }
+    L *= 2;
+  }
+  if (!mejor) throw new Error('No encontré ningún punto dentro de ese sólido. Revise las desigualdades.');
+  return mejor.map(a => { const h = (a[1] - a[0]) * .1 + 1e-6; return [a[0] - h, a[1] + h]; });
+}
+
+function simpson(fn, a, b, n) {
+  if (n % 2) n++;
+  const h = (b - a) / n; let s = 0;
+  for (let i = 0; i <= n; i++) s += ((i === 0 || i === n) ? 1 : (i % 2 ? 4 : 2)) * fn(a + i * h);
+  return s * h / 3;
+}
+
+/* flujo por una superficie cerrada = integral de la divergencia en el sólido.
+   Se reconocen la caja y la bola para integrar con exactitud; si no, se avisa. */
+function flujoSolido(reg) {
+  const caja = cajaSolido(reg);
+  /* ¿es una caja? */
+  const esCaja = (() => {
+    for (let i = 0; i < 600; i++) {
+      const p = caja.map(a => a[0] + Math.random() * (a[1] - a[0]));
+      const dentroCaja = p.every((c, q) => c > caja[q][0] + (caja[q][1] - caja[q][0]) * .12 &&
+                                           c < caja[q][1] - (caja[q][1] - caja[q][0]) * .12);
+      if (dentroCaja && !enSolido(reg, p)) return false;
+    }
+    return true;
+  })();
+  if (esCaja) {
+    const ex = extremos(reg, caja);
+    const v = simpson(x => simpson(y => simpson(z => divergencia([x, y, z]), ex[2][0], ex[2][1], 40),
+                                   ex[1][0], ex[1][1], 40), ex[0][0], ex[0][1], 40);
+    const vol = (ex[0][1] - ex[0][0]) * (ex[1][1] - ex[1][0]) * (ex[2][1] - ex[2][0]);
+    return { valor: v, forma: 'caja', exacto: true, vol: vol, ex: ex };
+  }
+  /* ¿es una bola centrada en el origen? */
+  const Rm = radioSolido(reg, caja);
+  if (Rm) {
+    const v = simpson(th => simpson(ph => simpson(rr => {
+      const p = [rr * Math.sin(ph) * Math.cos(th), rr * Math.sin(ph) * Math.sin(th), rr * Math.cos(ph)];
+      return divergencia(p) * rr * rr * Math.sin(ph);
+    }, 0, Rm, 48), 0, Math.PI, 40), 0, 2 * Math.PI, 40);
+    return { valor: v, forma: 'bola de radio ' + fmt(Rm), exacto: true, vol: 4 / 3 * Math.PI * Rm * Rm * Rm };
+  }
+  /* malla general */
+  const n = 90; let s = 0, dv = 1;
+  const paso = caja.map(a => (a[1] - a[0]) / n);
+  dv = paso[0] * paso[1] * paso[2];
+  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) for (let k = 0; k < n; k++) {
+    const p = [caja[0][0] + (i + .5) * paso[0], caja[1][0] + (j + .5) * paso[1], caja[2][0] + (k + .5) * paso[2]];
+    if (enSolido(reg, p)) s += divergencia(p);
+  }
+  return { valor: s * dv, forma: 'sólido general', exacto: false };
+}
+
+function extremos(reg, caja) {
+  const ex = [];
+  for (let q = 0; q < 3; q++) {
+    let lo = caja[q][1], hi = caja[q][0];
+    for (let i = 0; i < 4000; i++) {
+      const p = caja.map(a => a[0] + Math.random() * (a[1] - a[0]));
+      if (enSolido(reg, p)) { if (p[q] < lo) lo = p[q]; if (p[q] > hi) hi = p[q]; }
+    }
+    ex.push([redondear(lo), redondear(hi)]);
+  }
+  return ex;
+}
+function redondear(v) { const r = Math.round(v * 1e3) / 1e3; return Math.abs(r - Math.round(r)) < 2e-3 ? Math.round(r) : r; }
+
+function radioSolido(reg, caja) {
+  let R = 0;
+  for (let i = 0; i < 6000; i++) {
+    const p = caja.map(a => a[0] + Math.random() * (a[1] - a[0]));
+    if (enSolido(reg, p)) R = Math.max(R, Math.hypot(p[0], p[1], p[2]));
+  }
+  if (R <= 0) return null;
+  R = redondear(R);
+  for (let i = 0; i < 1500; i++) {
+    const u = [Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1];
+    const m = Math.hypot(u[0], u[1], u[2]); if (m < 1e-6) continue;
+    const dentro = u.map(c => c / m * R * 0.96), fuera = u.map(c => c / m * R * 1.04);
+    if (!enSolido(reg, dentro) || enSolido(reg, fuera)) return null;
+  }
+  return R;
+}
+
+function circulacion(cx, cy, cz, a, b) {
+  const pos = (t) => [ev(cx, { t: t }), ev(cy, { t: t }), ev(cz, { t: t })];
+  const integrando = (t) => {
+    const h = 1e-5 * Math.max(1, Math.abs(t));
+    const p = pos(t), p1 = pos(t + h), p2 = pos(t - h);
+    const dr = [(p1[0] - p2[0]) / (2 * h), (p1[1] - p2[1]) / (2 * h), (p1[2] - p2[2]) / (2 * h)];
+    const f = campo(p);
+    if (f.some(c => !isFinite(c)) || dr.some(c => !isFinite(c))) return 0;
+    return f[0] * dr[0] + f[1] * dr[1] + f[2] * dr[2];
+  };
+  return simpson(integrando, a, b, 2000);
+}
+
+function mostrarObjeto() {
+  limpiarAviso('m3'); limpiarAviso('m3b'); el('p3').classList.remove('visible'); T.listo3 = false;
+  try {
+    if (!T.listo1) throw new Error('Represente primero el campo en el módulo 1.');
+    if (T.objeto === 'curva') {
+      const cx = compilar(el('cx').value, 'x(t)'), cy = compilar(el('cy').value, 'y(t)'),
+            cz = compilar(el('cz').value, 'z(t)');
+      const a = numero(el('ta').value, 'el valor inicial de t'), b = numero(el('tb').value, 'el valor final de t');
+      if (b <= a) throw new Error('El valor final de t debe ser mayor que el inicial.');
+      const pos = (t) => [ev(cx, { t: t }), ev(cy, { t: t }), ev(cz, { t: t })];
+      const p0 = pos(a), p1 = pos(b);
+      const cerrada = Math.hypot(p0[0] - p1[0], p0[1] - p1[1], p0[2] - p1[2]) < 1e-6;
+      T.valor = circulacion(cx, cy, cz, a, b);
+      dibujarCurva(pos, a, b);
+      let h = '<h3>Curva descrita</h3>';
+      h += '<div class="dato">\\(\\mathbf{r}(t)=\\big(' + aTex(el('cx').value) + ',\\; ' +
+           aTex(el('cy').value) + ',\\; ' + aTex(el('cz').value) + '\\big)\\), con \\(t\\in[' +
+           aTex(el('ta').value) + ',\\, ' + aTex(el('tb').value) + ']\\)</div>';
+      h += '<div class="dato"><b>¿Es cerrada?</b> ' + (cerrada
+        ? 'Sí: el punto final coincide con el inicial, como exigen Green y Stokes.'
+        : '<span style="color:var(--error)">No: el punto final no coincide con el inicial. ' +
+          'Los teoremas de Green y Stokes requieren una curva cerrada.</span>') + '</div>';
+      h += '<div class="dato" style="color:var(--suave);font-size:.84rem;margin-top:.6rem">' +
+           'Las flechas sobre la curva son el campo evaluado allí. Donde apuntan a favor del ' +
+           'recorrido, la circulación crece; donde apuntan en contra, decrece.</div>';
+      el('f3').innerHTML = h;
+      if (!cerrada) aviso('m3', 'mal', 'La curva no es cerrada. Revise los límites de \\(t\\) antes de continuar.');
+      else aviso('m3', 'ok', 'Campo representado sobre su curva. Resuelva la integral a mano y compruebe su resultado abajo.');
+    } else {
+      const reg = leerSolido(el('solido').value);
+      const r = flujoSolido(reg);
+      T.valor = r.valor;
+      dibujarSolido(reg);
+      let h = '<h3>Superficie descrita</h3>';
+      h += '<div class="dato"><b>Sólido que encierra:</b> ' +
+           reg.map(d => '\\(' + aTex(d.txt) + '\\)').join(', ') + '</div>';
+      h += '<div class="dato"><b>Forma reconocida:</b> ' + r.forma + '</div>';
+      if (!r.exacto)
+        h += '<div class="dato" style="color:var(--naranja)">No reconocí una caja ni una bola, así que ' +
+             'el valor de referencia se calcula por malla y puede tener algo de error. Si su resultado ' +
+             'correcto fuera rechazado, avísele a su tutor.</div>';
+      h += '<div class="dato" style="color:var(--suave);font-size:.84rem;margin-top:.6rem">' +
+           'Los puntos son el sólido que la superficie encierra; la normal se toma hacia afuera, ' +
+           'como indica la Tabla 5 del Apéndice 5.</div>';
+      el('f3').innerHTML = h;
+      aviso('m3', 'ok', 'Superficie representada. Resuelva la integral a mano y compruebe su resultado abajo.');
+    }
+    el('p3').classList.add('visible');
+    T.listo3 = true;
+    tipografiar(); guardar(true);
+  } catch (e) { aviso('m3', 'mal', e.message); }
+}
+
+function dibujarCurva(pos, a, b) {
+  const N = 220, X = [], Y = [], Z = [];
+  for (let i = 0; i <= N; i++) { const p = pos(a + (b - a) * i / N); X.push(p[0]); Y.push(p[1]); Z.push(p[2]); }
+  const M = 26, cx = [], cy = [], cz = [], u = [], v = [], w = [];
+  for (let i = 0; i < M; i++) {
+    const p = pos(a + (b - a) * i / M), f = campo(p);
+    if (f.some(c => !isFinite(c))) continue;
+    cx.push(p[0]); cy.push(p[1]); cz.push(p[2]); u.push(f[0]); v.push(f[1]); w.push(f[2]);
+  }
+  const centro = [X, Y, Z].map(A => (Math.min.apply(null, A) + Math.max.apply(null, A)) / 2);
+  const medio = Math.max(1, Math.max.apply(null, [X, Y, Z].map(
+    A => (Math.max.apply(null, A) - Math.min.apply(null, A)) / 2))) * 1.25;
+  const rango = centro.map(c => [c - medio, c + medio]);
+  Plotly.newPlot('g3', [
+    { type: 'scatter3d', mode: 'lines', x: X, y: Y, z: Z,
+      line: { color: '#003366', width: 5 }, name: 'C', hoverinfo: 'skip' },
+    { type: 'cone', x: cx, y: cy, z: cz, u: u, v: v, w: w,
+      colorscale: [[0, '#e8630a'], [1, '#ffcc00']], sizemode: 'scaled',
+      sizeref: 0.6, showscale: false }
+  ], {
+    margin: { l: 0, r: 0, t: 36, b: 0 }, paper_bgcolor: '#fff',
+    font: { family: 'Segoe UI, Arial', size: 11 }, showlegend: false,
+    title: { text: 'Campo sobre la curva', font: { size: 13, color: '#003366' } },
+    scene: { xaxis: { title: 'x', range: rango[0] }, yaxis: { title: 'y', range: rango[1] },
+             zaxis: { title: 'z', range: rango[2] }, aspectmode: 'cube' }
+  }, { displayModeBar: false, responsive: true });
+}
+
+function dibujarSolido(reg) {
+  const caja = cajaSolido(reg), pts = [];
+  let intentos = 0;
+  while (pts.length < 3500 && intentos < 300000) {
+    intentos++;
+    const p = caja.map(a => a[0] + Math.random() * (a[1] - a[0]));
+    if (enSolido(reg, p)) pts.push(p);
+  }
+  Plotly.newPlot('g3', [{
+    type: 'scatter3d', mode: 'markers',
+    x: pts.map(p => p[0]), y: pts.map(p => p[1]), z: pts.map(p => p[2]),
+    marker: { size: 1.7, color: '#00b3a4', opacity: .35 }, hoverinfo: 'skip'
+  }], {
+    margin: { l: 0, r: 0, t: 36, b: 0 }, paper_bgcolor: '#fff',
+    font: { family: 'Segoe UI, Arial', size: 11 },
+    title: { text: 'Sólido encerrado por la superficie', font: { size: 13, color: '#003366' } },
+    scene: { xaxis: { title: 'x' }, yaxis: { title: 'y' }, zaxis: { title: 'z' }, aspectmode: 'data' }
+  }, { displayModeBar: false, responsive: true });
+}
+
+function comprobarResultado() {
+  limpiarAviso('m3b');
+  if (!T.listo3 || T.valor === null) {
+    aviso('m3b', 'mal', 'Muestre primero el campo sobre su curva o superficie.'); return;
+  }
+  const t = el('vRes').value.trim();
+  if (!t) { aviso('m3b', 'mal', 'Escriba el resultado que obtuvo.'); return; }
+  const nombre = T.objeto === 'curva' ? 'la circulación' : 'el flujo';
+  if (coincide(t, T.valor)) {
+    aviso('m3b', 'ok', '<b>Su resultado para ' + nombre + ' es correcto.</b><br>' +
+      '<span style="color:var(--suave);font-size:.85rem">Ya puede plantear la igualdad del teorema ' +
+      'en la actividad 4 y comprobar su integrando en el módulo 4.</span>');
+  } else {
+    let h = '<b>Todavía no coincide.</b><ul>';
+    if (T.objeto === 'curva')
+      h += '<li>Revise el sentido del recorrido: invertirlo cambia el signo.</li>' +
+           '<li>Compruebe que \\(d\\mathbf{r}\\) sea la derivada de su parametrización, no un diferencial de longitud.</li>';
+    else
+      h += '<li>Revise la orientación de la normal: debe apuntar hacia afuera.</li>' +
+           '<li>Compruebe que integró sobre toda la superficie cerrada, incluidas las caras o tapas.</li>';
+    h += '<li>Si su valor está en función de \\(\\pi\\), escríbalo como número: ' +
+         'el simulador acepta <code>36*pi</code> o <code>113.10</code>.</li></ul>' +
+         '<span style="color:var(--suave);font-size:.85rem">No le muestro el valor correcto: ' +
+         'el procedimiento del ítem IV es suyo.</span>';
+    aviso('m3b', 'mal', h);
+  }
+  tipografiar(); guardar(true);
+}
+
+/* ───── MÓDULO 4 ───── */
+function comprobarIntegrando() {
+  limpiarAviso('m4'); el('p4').classList.remove('visible');
+  try {
+    if (!T.listo1) throw new Error('Represente primero el campo en el módulo 1.');
+    const th = el('teorema').value;
+    if (!th) throw new Error('Elija el teorema que aplicó.');
+    const txt = el('integrando').value.trim();
+    if (!txt) throw new Error('Escriba el integrando que puso al lado derecho de la igualdad.');
+
+    let verdadera, descripcion, formula;
+    if (th === 'divergencia') {
+      verdadera = (p) => divergencia(p);
+      descripcion = 'el teorema de la divergencia iguala el flujo por una superficie cerrada con la ' +
+                    'integral de \\(\\nabla\\cdot\\mathbf{F}\\) sobre el sólido que encierra';
+      formula = '\\oiint_{S}\\mathbf{F}\\cdot d\\mathbf{S}=\\iiint_{V}(\\nabla\\cdot\\mathbf{F})\\,dV';
+    } else if (th === 'stokes') {
+      verdadera = (p) => rotacional(p)[2];
+      descripcion = 'el teorema de Stokes iguala la circulación por una curva cerrada con el flujo del ' +
+                    'rotacional a través de una superficie que se apoya en ella; con la curva en el plano ' +
+                    '\\(z=0\\) y la normal \\(\\mathbf{k}\\), el integrando es la tercera componente del rotacional';
+      formula = '\\oint_{C}\\mathbf{F}\\cdot d\\mathbf{r}=\\iint_{S}(\\nabla\\times\\mathbf{F})\\cdot \\mathbf{n}\\,dS';
+    } else {
+      verdadera = (p) => rotacional(p)[2];
+      descripcion = 'el teorema de Green iguala la circulación por una curva cerrada del plano con la ' +
+                    'integral de \\(\\partial Q/\\partial x-\\partial P/\\partial y\\) sobre la región que encierra, ' +
+                    'que es la tercera componente del rotacional';
+      formula = '\\oint_{C}P\\,dx+Q\\,dy=\\iint_{R}\\left(\\frac{\\partial Q}{\\partial x}-\\frac{\\partial P}{\\partial y}\\right)dA';
+    }
+
+    const ok = comparaExpresion(txt, verdadera, 'su integrando');
+    let h = '<h3>Teorema aplicado</h3>';
+    h += '<div class="dato">\\[' + formula + '\\]</div>';
+    h += '<div class="dato">En su problema, ' + descripcion + '.</div>';
+    h += '<div class="dato" style="color:var(--suave);font-size:.84rem;margin-top:.6rem">' +
+         'El simulador no resuelve la integral del lado derecho: la actividad 4 pide plantear la ' +
+         'igualdad, no resolverla.</div>';
+    el('f4').innerHTML = h;
+    el('p4').classList.add('visible');
+
+    if (ok) aviso('m4', 'ok', '<b>Su integrando coincide</b> con el operador que exige el teorema que eligió. ' +
+      'Verifique además que los límites del lado derecho correspondan a la región que encierra su curva o superficie.');
+    else aviso('m4', 'mal', '<b>Su integrando no coincide</b> con el operador que exige ese teorema. ' +
+      'Compruebe en el módulo 2 cuál es el valor correcto y revise si eligió el teorema adecuado: ' +
+      'la divergencia va con superficies cerradas y flujo; Green y Stokes, con curvas cerradas y circulación.');
+    tipografiar(); guardar(true);
+  } catch (e) { aviso('m4', 'mal', e.message); }
+}
+
+/* ───── persistencia ───── */
+const CLAVE = 'simulador-campos-fase4';
+const CAMPOS = ['P', 'Q', 'R', 'vmin', 'vmax', 'dens', 'escala', 'mDiv', 'mRx', 'mRy', 'mRz',
+                'objeto', 'vRes', 'teorema', 'integrando'];
+const CAMPOS_OBJ = ['cx', 'cy', 'cz', 'ta', 'tb', 'solido'];
+
+function recolectar() {
+  const d = {};
+  CAMPOS.concat(CAMPOS_OBJ).forEach(c => { const n = el(c); if (n) d[c] = n.value; });
+  return d;
+}
+function aplicar(d) {
+  CAMPOS.forEach(c => { const n = el(c); if (n && d[c] !== undefined) n.value = d[c]; });
+  camposObjeto();
+  CAMPOS_OBJ.forEach(c => { const n = el(c); if (n && d[c] !== undefined) n.value = d[c]; });
+}
+function guardar(sil) {
+  try {
+    localStorage.setItem(CLAVE, JSON.stringify(recolectar()));
+    el('estado').textContent = 'Avance guardado ' + new Date().toLocaleTimeString('es-CO');
+  } catch (e) { if (!sil) alert('No pude guardar en este navegador. Use el código de traslado.'); }
+}
+function restaurar() {
+  try { const t = localStorage.getItem(CLAVE);
+    if (t) { aplicar(JSON.parse(t)); el('estado').textContent = 'Avance anterior recuperado'; } }
+  catch (e) { /* nada */ }
+}
+function codigo() {
+  try {
+    const s = btoa(unescape(encodeURIComponent(JSON.stringify(recolectar()))));
+    navigator.clipboard.writeText(s).then(
+      () => alert('Código copiado al portapapeles. Péguelo en el otro equipo con «Cargar desde código».'),
+      () => prompt('Copie este código y guárdelo:', s));
+  } catch (e) { alert('No pude generar el código.'); }
+}
+function cargarCodigo() {
+  const s = prompt('Pegue aquí el código de traslado:');
+  if (!s) return;
+  try { aplicar(JSON.parse(decodeURIComponent(escape(atob(s.trim())))));
+    el('estado').textContent = 'Avance cargado desde código'; }
+  catch (e) { alert('Ese código no es válido.'); }
+}
+function limpiarTodo() {
+  if (!confirm('Esto borra todo lo que ha escrito en el simulador. ¿Continuar?')) return;
+  try { localStorage.removeItem(CLAVE); } catch (e) { /* nada */ }
+  location.reload();
+}
+
+el('objeto').addEventListener('change', camposObjeto);
+el('b1').addEventListener('click', representar);
+el('b2a').addEventListener('click', contrastarOperadores);
+el('b2').addEventListener('click', calcularOperadores);
+el('b3').addEventListener('click', mostrarObjeto);
+el('b3b').addEventListener('click', comprobarResultado);
+el('b4').addEventListener('click', comprobarIntegrando);
+el('bGuardar').addEventListener('click', () => guardar(false));
+el('bCodigo').addEventListener('click', codigo);
+el('bCargar').addEventListener('click', cargarCodigo);
+el('bLimpiar').addEventListener('click', limpiarTodo);
+CAMPOS.forEach(c => { const n = el(c); if (n) n.addEventListener('change', () => guardar(true)); });
+
+camposObjeto();
+restaurar();
+tipografiar();
+</script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "Si utiliza este recurso, por favor cítelo como se indica a continuación."
+title: "Simulador de campos vectoriales y Maxwell"
+abstract: >-
+  Recurso educativo digital para la Fase 4 del curso Cálculo Multivariado (203057)
+  de la Universidad Nacional Abierta y a Distancia. Representa el campo vectorial en
+  el espacio, calcula la divergencia y el rotacional, muestra el campo sobre la curva
+  o la superficie cerrada asignada y comprueba el valor de la circulación o del flujo
+  que el estudiante resolvió a mano, así como el integrando del teorema que planteó.
+  No resuelve las integrales.
+type: software
+version: "1.0.0"
+date-released: "2026-11-17"
+license: CC-BY-NC-SA-4.0
+repository-code: "https://github.com/calculo-multivariado-203057/simulador-campos"
+url: "https://calculo-multivariado-203057.github.io/simulador-campos/"
+languages:
+  - spa
+keywords:
+  - cálculo multivariado
+  - campos vectoriales
+  - divergencia y rotacional
+  - teoremas de Green Stokes y la divergencia
+  - ecuaciones de Maxwell
+  - recurso educativo digital
+  - educación a distancia
+authors:
+  - family-names: "Gutiérrez Duncan"
+    given-names: "Pablo Emilio"
+    affiliation: >-
+      Universidad Nacional Abierta y a Distancia (UNAD), Escuela de Ciencias
+      Básicas, Tecnología e Ingeniería (ECBTI), CCAV Puerto Colombia, Zona Caribe
+    city: "Barranquilla"
+    country: CO
+    email: "pablo.gutierrez@unad.edu.co"
+    orcid: "https://orcid.org/0009-0001-6596-8536"
