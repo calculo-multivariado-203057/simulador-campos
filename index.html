@@ -460,7 +460,7 @@ function dibujarCampo() {
     font: { family: 'Segoe UI, Arial', size: 11 },
     title: { text: 'Campo vectorial en el espacio', font: { size: 13, color: '#003366' } },
     scene: { xaxis: { title: 'x' }, yaxis: { title: 'y' }, zaxis: { title: 'z' }, aspectmode: 'cube' }
-  }, { displayModeBar: false, responsive: true });
+  }, { responsive: true, displaylogo: false });
 }
 
 function fichaCampo() {
@@ -811,7 +811,7 @@ function dibujarCurva(pos, a, b) {
     title: { text: 'Campo sobre la curva', font: { size: 13, color: '#003366' } },
     scene: { xaxis: { title: 'x', range: rango[0] }, yaxis: { title: 'y', range: rango[1] },
              zaxis: { title: 'z', range: rango[2] }, aspectmode: 'cube' }
-  }, { displayModeBar: false, responsive: true });
+  }, { responsive: true, displaylogo: false });
 }
 
 function dibujarSolido(reg) {
@@ -831,7 +831,7 @@ function dibujarSolido(reg) {
     font: { family: 'Segoe UI, Arial', size: 11 },
     title: { text: 'Sólido encerrado por la superficie', font: { size: 13, color: '#003366' } },
     scene: { xaxis: { title: 'x' }, yaxis: { title: 'y' }, zaxis: { title: 'z' }, aspectmode: 'data' }
-  }, { displayModeBar: false, responsive: true });
+  }, { responsive: true, displaylogo: false });
 }
 
 function comprobarResultado() {
