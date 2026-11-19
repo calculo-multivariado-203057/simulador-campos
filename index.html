@@ -226,6 +226,20 @@
         <div class="ficha" id="f3"></div>
       </div>
 
+      <div class="ficha" id="recorridoCaja" style="margin-top:.9rem;display:none">
+        <h3>Recorrido — vea acumularse la circulación</h3>
+        <p style="font-size:.86rem;color:var(--suave);margin-bottom:.5rem">
+          Avance por la curva: la partícula recorre la trayectoria y abajo se acumula la
+          circulación. Donde el campo apunta a favor del recorrido la curva sube; donde
+          apunta en contra, baja.</p>
+        <div style="display:flex;gap:.6rem;align-items:center">
+          <button id="bAnda" class="sec" style="margin-top:0;white-space:nowrap">Recorrer</button>
+          <input type="range" id="recorrido" min="0" max="1" step="0.004" value="1" style="width:100%">
+        </div>
+        <div id="recorridoTexto" style="font-size:.88rem;margin-top:.5rem"></div>
+        <div class="grafico" id="gAcum" style="height:210px;margin-top:.6rem"></div>
+      </div>
+
       <div class="rejilla" style="margin-top:.9rem">
         <div><label for="vRes">Resultado que obtuve a mano <span class="pista">— ítem IV</span></label>
           <input type="text" id="vRes" placeholder="113.10"></div>
@@ -315,7 +329,7 @@
 const T = {
   P: null, Q: null, R: null, Ps: '', Qs: '', Rs: '',
   vmin: -3, vmax: 3, listo1: false,
-  objeto: 'curva', valor: null, listo3: false
+  objeto: 'curva', valor: null, listo3: false, recorrido: null
 };
 
 function el(id) { return document.getElementById(id); }
@@ -733,6 +747,86 @@ function circulacion(cx, cy, cz, a, b) {
   return simpson(integrando, a, b, 2000);
 }
 
+/* ═════════ recorrido acumulado sobre la curva ═════════ */
+let andando = null;
+
+function prepararRecorrido(pos, a, b) {
+  const N = 240, ts = [], acum = [], pot = [];
+  let s = 0, prev = null;
+  for (let i = 0; i <= N; i++) {
+    const t = a + (b - a) * i / N;
+    const h = (b - a) * 1e-4;
+    const p = pos(t), p1 = pos(t + h), p2 = pos(t - h);
+    const dr = [(p1[0] - p2[0]) / (2 * h), (p1[1] - p2[1]) / (2 * h), (p1[2] - p2[2]) / (2 * h)];
+    const F = campo(p);
+    let w = 0;
+    if (F.every(isFinite) && dr.every(isFinite)) w = F[0] * dr[0] + F[1] * dr[1] + F[2] * dr[2];
+    if (prev !== null) s += (w + prev) / 2 * ((b - a) / N);
+    prev = w;
+    ts.push(t); acum.push(s); pot.push(w);
+  }
+  T.recorrido = { ts: ts, acum: acum, pot: pot, pos: pos, a: a, b: b };
+  el('recorridoCaja').style.display = 'block';
+  el('recorrido').value = 1;
+  dibujarRecorrido(1);
+}
+
+function dibujarRecorrido(frac) {
+  const R = T.recorrido;
+  if (!R) return;
+  const N = R.ts.length - 1;
+  const i = Math.max(0, Math.min(N, Math.round(frac * N)));
+  const t = R.ts[i], p = R.pos(t), F = campo(p);
+
+  /* curva de acumulación */
+  Plotly.react('gAcum', [
+    { type: 'scatter', mode: 'lines', x: R.ts.slice(0, i + 1), y: R.acum.slice(0, i + 1),
+      line: { color: '#003366', width: 2.6 }, hoverinfo: 'x+y', name: 'acumulado' },
+    { type: 'scatter', mode: 'lines', x: R.ts, y: R.acum,
+      line: { color: '#cfd8e3', width: 1.6 }, hoverinfo: 'skip', showlegend: false },
+    { type: 'scatter', mode: 'markers', x: [t], y: [R.acum[i]],
+      marker: { size: 10, color: '#e8630a' }, hoverinfo: 'x+y', showlegend: false }
+  ], {
+    margin: { t: 10, r: 12, b: 34, l: 54 }, paper_bgcolor: '#fff', plot_bgcolor: '#fff',
+    font: { family: 'Segoe UI, Arial', size: 11 }, showlegend: false,
+    xaxis: { title: 't', range: [R.a, R.b], zeroline: false },
+    yaxis: { title: 'circulación acumulada', zeroline: true, zerolinecolor: '#d9dee7' }
+  }, { responsive: true, displaylogo: false });
+
+  /* partícula y vector del campo sobre la curva en 3D */
+  const g = el('g3');
+  if (g && g.data && g.data.length) {
+    const extra = { type: 'scatter3d', mode: 'markers', x: [p[0]], y: [p[1]], z: [p[2]],
+      marker: { size: 7, color: '#e8630a', line: { color: '#fff', width: 1 } },
+      hoverinfo: 'skip', showlegend: false };
+    const base = g.data.filter(d => d.name !== '__particula');
+    extra.name = '__particula';
+    Plotly.react('g3', base.concat([extra]), g.layout, { responsive: true, displaylogo: false });
+  }
+
+  const signo = R.pot[i] > 1e-9 ? 'a favor del recorrido: la acumulación sube'
+              : (R.pot[i] < -1e-9 ? 'en contra del recorrido: la acumulación baja'
+                                  : 'perpendicular al recorrido: no aporta');
+  el('recorridoTexto').innerHTML =
+    'Recorrido al <b>' + Math.round(frac * 100) + ' %</b> · \\( t = ' + fmt(t) + ' \\)'
+    + ' · en ese punto el campo va <b>' + signo + '</b>.'
+    + '<br><span style="color:var(--suave);font-size:.85rem">El valor final de esta curva es la '
+    + 'circulación total. No se lo muestro como número: eso lo calcula usted en el ítem IV.</span>';
+  tipografiar();
+}
+
+function recorrer() {
+  if (andando) { clearInterval(andando); andando = null; el('bAnda').textContent = 'Recorrer'; return; }
+  el('bAnda').textContent = 'Detener';
+  let v = 0;
+  andando = setInterval(() => {
+    v += 0.02;
+    if (v >= 1) { v = 1; clearInterval(andando); andando = null; el('bAnda').textContent = 'Recorrer'; }
+    el('recorrido').value = v;
+    dibujarRecorrido(v);
+  }, 60);
+}
+
 function mostrarObjeto() {
   limpiarAviso('m3'); limpiarAviso('m3b'); el('p3').classList.remove('visible'); T.listo3 = false;
   try {
@@ -747,6 +841,7 @@ function mostrarObjeto() {
       const cerrada = Math.hypot(p0[0] - p1[0], p0[1] - p1[1], p0[2] - p1[2]) < 1e-6;
       T.valor = circulacion(cx, cy, cz, a, b);
       dibujarCurva(pos, a, b);
+      prepararRecorrido(pos, a, b);
       let h = '<h3>Curva descrita</h3>';
       h += '<div class="dato">\\(\\mathbf{r}(t)=\\big(' + aTex(el('cx').value) + ',\\; ' +
            aTex(el('cy').value) + ',\\; ' + aTex(el('cz').value) + '\\big)\\), con \\(t\\in[' +
@@ -762,6 +857,8 @@ function mostrarObjeto() {
       if (!cerrada) aviso('m3', 'mal', 'La curva no es cerrada. Revise los límites de \\(t\\) antes de continuar.');
       else aviso('m3', 'ok', 'Campo representado sobre su curva. Resuelva la integral a mano y compruebe su resultado abajo.');
     } else {
+      el('recorridoCaja').style.display = 'none';
+      T.recorrido = null;
       const reg = leerSolido(el('solido').value);
       const r = flujoSolido(reg);
       T.valor = r.valor;
@@ -966,6 +1063,8 @@ el('b2a').addEventListener('click', contrastarOperadores);
 el('b2').addEventListener('click', calcularOperadores);
 el('b3').addEventListener('click', mostrarObjeto);
 el('b3b').addEventListener('click', comprobarResultado);
+el('recorrido').addEventListener('input', e => dibujarRecorrido(parseFloat(e.target.value)));
+el('bAnda').addEventListener('click', recorrer);
 el('b4').addEventListener('click', comprobarIntegrando);
 el('bGuardar').addEventListener('click', () => guardar(false));
 el('bCodigo').addEventListener('click', codigo);
