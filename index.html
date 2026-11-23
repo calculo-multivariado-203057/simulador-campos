@@ -124,7 +124,7 @@
 
 <!-- ─────────── MÓDULO 1 ─────────── -->
 <section class="modulo" id="mod1">
-  <h2><span class="num">1</span> Campo vectorial y visualización <small>Actividad 1 · ítems I y II</small></h2>
+  <h2><span class="num">1</span> Campo vectorial y visualización <small>Actividad 1 · numerales I y II</small></h2>
   <div class="cuerpo">
     <p class="intro">
       Escriba las tres componentes del campo de su problema. El simulador lo representa en el
@@ -181,7 +181,7 @@
 
 <!-- ─────────── MÓDULO 2 ─────────── -->
 <section class="modulo" id="mod2">
-  <h2><span class="num">2</span> Divergencia y rotacional <small>Actividad 2 · ítems I, II y III</small></h2>
+  <h2><span class="num">2</span> Divergencia y rotacional <small>Actividad 2 · numerales I, II y III</small></h2>
   <div class="cuerpo">
     <p class="intro">
       El Apéndice 5 pide que el simulador determine la divergencia y el rotacional, así que aquí sí
@@ -206,7 +206,7 @@
 
 <!-- ─────────── MÓDULO 3 ─────────── -->
 <section class="modulo" id="mod3">
-  <h2><span class="num">3</span> Campo sobre la curva o la superficie <small>Actividad 3 · ítems II y IV</small></h2>
+  <h2><span class="num">3</span> Campo sobre la curva o la superficie <small>Actividad 3 · numerales II y IV</small></h2>
   <div class="cuerpo">
     <p class="intro">
       Describa la curva o la superficie que la Tabla 5 del Apéndice 5 asigna a su letra. El simulador
@@ -249,7 +249,7 @@
       </div>
 
       <div class="rejilla" style="margin-top:.9rem">
-        <div><label for="vRes">Resultado que obtuve a mano <span class="pista">— ítem IV</span></label>
+        <div><label for="vRes">Resultado que obtuve a mano <span class="pista">— numeral IV</span></label>
           <input type="text" id="vRes" placeholder="113.10"></div>
       </div>
       <button id="b3b">Comprobar mi resultado</button>
@@ -259,7 +259,7 @@
     <details class="ayuda">
       <summary>¿Cómo se describe la curva o la superficie?</summary>
       <div class="adentro">
-        <p><b>Curva cerrada.</b> Escriba la parametrización, que es justamente lo que pide el ítem I.
+        <p><b>Curva cerrada.</b> Escriba la parametrización, que es justamente lo que pide el numeral I.
           Para \(x^{2}+y^{2}=1\) en \(z=0\), recorrida en sentido antihorario:</p>
         <table>
           <tr><th>Casilla</th><th>Qué se escribe</th></tr>
@@ -281,7 +281,7 @@
 
 <!-- ─────────── MÓDULO 4 ─────────── -->
 <section class="modulo" id="mod4">
-  <h2><span class="num">4</span> Integrando del teorema <small>Actividad 4 · ítem II</small></h2>
+  <h2><span class="num">4</span> Integrando del teorema <small>Actividad 4 · numeral II</small></h2>
   <div class="cuerpo">
     <p class="intro">
       Elija el teorema y escriba el integrando que puso al lado derecho de la igualdad. El simulador
@@ -453,7 +453,7 @@ function representar() {
     el('f1').innerHTML = fichaCampo();
     el('p1').classList.add('visible');
     T.listo1 = true;
-    aviso('m1', 'ok', 'Campo representado. Describa su comportamiento en el ítem III y anticipe, ' +
+    aviso('m1', 'ok', 'Campo representado. Describa su comportamiento en el numeral III y anticipe, ' +
       '<b>antes de calcular</b>, si espera divergencia o rotacional no nulos.');
     tipografiar(); guardar(true);
   } catch (e) { aviso('m1', 'mal', e.message); }
@@ -509,7 +509,7 @@ function fichaCampo() {
       ? 'No se observa tendencia al giro alrededor de ningún eje.'
       : 'Se observa tendencia al giro: las flechas rotan alrededor de un eje.') + '</div>';
   h += '<div class="dato" style="color:var(--suave);font-size:.84rem;margin-top:.6rem">' +
-       'Esto es una lectura del dibujo, para que usted escriba su anticipación del ítem III. ' +
+       'Esto es una lectura del dibujo, para que usted escriba su anticipación del numeral III. ' +
        'Los valores exactos los calcula el módulo 2.</div>';
   return h;
 }
@@ -594,7 +594,7 @@ function calcularOperadores() {
 
   h += '<div class="dato" style="color:var(--suave);font-size:.84rem;margin-top:.7rem">' +
        'La interpretación física y la relación con la ecuación de Maxwell pertinente son suyas: ' +
-       'eso es el ítem III de la actividad 2 y el ítem III de la actividad 4.</div>';
+       'eso es el numeral III de la actividad 2 y el numeral III de la actividad 4.</div>';
 
   el('f2').innerHTML = h;
   el('p2').classList.add('visible');
@@ -819,7 +819,7 @@ function dibujarRecorrido(frac) {
     'Recorrido al <b>' + Math.round(frac * 100) + ' %</b> · \\( t = ' + fmt(t) + ' \\)'
     + ' · en ese punto el campo va <b>' + signo + '</b>.'
     + '<br><span style="color:var(--suave);font-size:.85rem">El valor final de esta curva es la '
-    + 'circulación total. No se lo muestro como número: eso lo calcula usted en el ítem IV.</span>';
+    + 'circulación total. No se lo muestro como número: eso lo calcula usted en el numeral IV.</span>';
   tipografiar();
 }
 
@@ -962,7 +962,7 @@ function comprobarResultado() {
     h += '<li>Si su valor está en función de \\(\\pi\\), escríbalo como número: ' +
          'el simulador acepta <code>36*pi</code> o <code>113.10</code>.</li></ul>' +
          '<span style="color:var(--suave);font-size:.85rem">No le muestro el valor correcto: ' +
-         'el procedimiento del ítem IV es suyo.</span>';
+         'el procedimiento del numeral IV es suyo.</span>';
     aviso('m3b', 'mal', h);
   }
   tipografiar(); guardar(true);
