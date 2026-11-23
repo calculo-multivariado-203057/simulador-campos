@@ -87,6 +87,14 @@
   .estado { font-size: .8rem; color: var(--suave); margin-left: auto; }
   footer { text-align: center; font-size: .78rem; color: var(--suave); padding: 1.5rem 1rem 0; }
   .sub { font-size: .82rem; color: var(--suave); margin: .6rem 0 .2rem; }
+
+    /* ── accesibilidad ── */
+    .sr-solo{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;
+      overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+    :focus-visible{outline:3px solid #e8630a;outline-offset:2px}
+    [role="img"]:focus-visible{outline:3px solid #e8630a;outline-offset:4px}
+    @media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;
+      transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
@@ -145,8 +153,8 @@
 
     <div class="panel" id="p1">
       <div class="dos">
-        <div class="grafico" id="g1"></div>
-        <div class="ficha" id="f1"></div>
+        <div class="grafico" id="g1" role="img" tabindex="0" aria-label="Representación del campo vectorial en el espacio mediante flechas."></div>
+        <div class="ficha" id="f1" aria-live="polite"></div>
       </div>
     </div>
 
@@ -192,7 +200,7 @@
     <button id="b2">Calcular con el simulador</button>
     <div class="msg" id="m2"></div>
 
-    <div class="panel" id="p2"><div class="ficha" id="f2"></div></div>
+    <div class="panel" id="p2"><div class="ficha" id="f2" aria-live="polite"></div></div>
   </div>
 </section>
 
@@ -222,8 +230,8 @@
 
     <div class="panel" id="p3">
       <div class="dos">
-        <div class="grafico" id="g3"></div>
-        <div class="ficha" id="f3"></div>
+        <div class="grafico" id="g3" role="img" tabindex="0" aria-label="Trayectoria o superficie seleccionada con el campo vectorial sobre ella, y la partícula que recorre la curva."></div>
+        <div class="ficha" id="f3" aria-live="polite"></div>
       </div>
 
       <div class="ficha" id="recorridoCaja" style="margin-top:.9rem;display:none">
@@ -234,10 +242,10 @@
           apunta en contra, baja.</p>
         <div style="display:flex;gap:.6rem;align-items:center">
           <button id="bAnda" class="sec" style="margin-top:0;white-space:nowrap">Recorrer</button>
-          <input type="range" id="recorrido" min="0" max="1" step="0.004" value="1" style="width:100%">
+          <input type="range" id="recorrido" min="0" max="1" step="0.004" value="1" style="width:100%" aria-label="Avance del recorrido sobre la curva, de cero a cien por ciento">
         </div>
-        <div id="recorridoTexto" style="font-size:.88rem;margin-top:.5rem"></div>
-        <div class="grafico" id="gAcum" style="height:210px;margin-top:.6rem"></div>
+        <div id="recorridoTexto" style="font-size:.88rem;margin-top:.5rem" aria-live="polite"></div>
+        <div class="grafico" id="gAcum" style="height:210px;margin-top:.6rem" role="img" tabindex="0" aria-label="Curva de la circulación acumulada frente al parámetro de la trayectoria, con el punto que corresponde al avance actual del recorrido."></div>
       </div>
 
       <div class="rejilla" style="margin-top:.9rem">
@@ -297,7 +305,7 @@
     <button id="b4">Comprobar el integrando</button>
     <div class="msg" id="m4"></div>
 
-    <div class="panel" id="p4"><div class="ficha" id="f4"></div></div>
+    <div class="panel" id="p4"><div class="ficha" id="f4" aria-live="polite"></div></div>
 
     <details class="ayuda">
       <summary>¿Qué integrando corresponde a cada teorema?</summary>
@@ -1075,6 +1083,28 @@ CAMPOS.forEach(c => { const n = el(c); if (n) n.addEventListener('change', () =>
 camposObjeto();
 restaurar();
 tipografiar();
+
+/* ═════════ accesibilidad: una sola imagen anunciada por gráfica ═════════ */
+(function(){
+  function silenciar(caja){
+    caja.querySelectorAll('svg, canvas, .modebar').forEach(function(e){
+      e.setAttribute('aria-hidden','true');
+    });
+  }
+  function vigilar(){
+    document.querySelectorAll('[role="img"][aria-label]').forEach(function(caja){
+      if (caja.__vigilada) return;
+      caja.__vigilada = true;
+      silenciar(caja);
+      new MutationObserver(function(){ silenciar(caja); })
+        .observe(caja, {childList:true, subtree:true});
+    });
+  }
+  if (document.readyState === 'loading')
+    document.addEventListener('DOMContentLoaded', vigilar);
+  else vigilar();
+  setTimeout(vigilar, 1500);
+})();
 </script>
 </body>
 </html>
